@@ -1,0 +1,165 @@
+---------------------------------------------------------------------------------------------------------------------------------
+                                                  The distance between the segments
+                                               
+Two segments are given in the space (x1, y1, z1) - (x2, y2, z2) and (x3, y3, z3) - (x4, y4, z4). Find the distance between the segments.
+
+Input format
+The integers x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4 are given. Coordinates on the module do not exceed 1000.
+
+Output format
+Print the desired value with an accuracy of at least 6 digits after the decimal point.
+
+----------------------------------------------------------------------------------------------------------------------------------
+#include <iostream>
+#include <math.h>
+
+const double epsilon = 0.00000001;
+
+class dot
+{
+    public:
+        double x;
+        double y;
+        double z;
+};
+
+double distance(const dot one, const dot two)
+{
+    return sqrt(pow(one.x - two.x, 2) + pow(one.y - two.y, 2) + pow(one.z - two.z, 2));
+}
+
+class intercept
+{
+    public:
+        dot start;
+        dot finish;
+        dot one_third;
+        dot second_third;
+        double lenth;
+};
+
+void enter_coordinates(dot &current_dot)
+{
+    std::cin >> current_dot.x >> current_dot.y >> current_dot.z;
+}
+
+void show_coordinates(const dot current_dot)
+{
+    std::cout << current_dot.x << " " << current_dot.y << " " << current_dot.z << "\n";
+}
+
+void show_intercept(intercept line)
+{
+    show_coordinates(line.one_third);
+    show_coordinates(line.second_third);
+}
+
+void build_intercept(intercept &line)
+{
+    dot start = line.start;
+    dot finish = line.finish;
+
+    line.one_third.x = start.x + (finish.x - start.x) / 3;
+    line.one_third.y = start.y + (finish.y - start.y) / 3;
+    line.one_third.z = start.z + (finish.z - start.z) / 3;
+
+    line.second_third.x = start.x + ((finish.x - start.x) * 2) / 3;
+    line.second_third.y = start.y + ((finish.y - start.y) * 2) / 3;
+    line.second_third.z = start.z + ((finish.z - start.z) * 2) / 3;
+
+    line.lenth = distance(start, finish);
+}
+
+double distance_from_point_to_intercept(const dot point, const intercept line)
+{
+    double height1;
+    double height2;
+    intercept current_line = line;
+
+    while(current_line.lenth > epsilon)
+    {
+        height1 = distance(point, current_line.one_third);
+        height2 = distance(point, current_line.second_third);
+
+        if(height1 > height2)
+            current_line.start = current_line.one_third;
+
+        else
+            current_line.finish = current_line.second_third;
+
+        build_intercept(current_line);
+    }
+
+    return distance(point, current_line.start);
+}
+
+
+void distance_between_intercepts(intercept &first_line, intercept &second_line)
+{
+    double height1;
+    double height2;
+    int count = 0;
+
+    while(first_line.lenth > epsilon || second_line.lenth > epsilon)
+    {
+
+        if(count % 2 == 0)
+        {
+            height1 = distance_from_point_to_intercept(first_line.one_third, second_line);
+            height2 = distance_from_point_to_intercept(first_line.second_third, second_line);
+
+            if(height1 > height2)
+                first_line.start = first_line.one_third;
+
+            else
+                first_line.finish = first_line.second_third;
+            build_intercept(first_line);
+        }
+
+        else
+        {
+            height1 = distance_from_point_to_intercept(second_line.one_third, first_line);
+            height2 = distance_from_point_to_intercept(second_line.second_third, first_line);
+
+            if(height1 > height2)
+                second_line.start = second_line.one_third;
+
+            else
+                second_line.finish = second_line.second_third;
+
+            build_intercept(second_line);
+        }
+
+        count++;
+    }
+
+    printf("%.8f",distance(first_line.start, second_line.start));
+
+}
+
+
+int main()
+{
+    dot first_line_start;
+    dot first_line_finish;
+    dot second_line_start;
+    dot second_line_finish;
+
+    enter_coordinates(first_line_start);
+    enter_coordinates(first_line_finish);
+    enter_coordinates(second_line_start);
+    enter_coordinates(second_line_finish);
+
+    intercept first_line, second_line;
+
+    first_line.start = first_line_start;
+    first_line.finish = first_line_finish;
+    second_line.start = second_line_start;
+    second_line.finish = second_line_finish;
+
+    build_intercept(first_line);
+    build_intercept(second_line);
+
+    distance_between_intercepts(first_line, second_line);
+
+}
