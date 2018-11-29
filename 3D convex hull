@@ -1,0 +1,261 @@
+---------------------------------------------------------------------------------------------------------------------------------------
+                                                          3D convex hull
+Given n points in space. No 4 points lie in one half-plane. Find the convex hull of these points beyond O (n2).
+
+Input format
+The first line contains the number m - the number of tests. The following lines describe the tests themselves.
+Each test starts with a line cont aining n (n ≤ 1000) - the number of points.
+Further, in n lines are given three numbers each - the coordinates of points. All coordinates are integers, do not exceed the modulo 500. 
+
+Output format
+For each test output the following. In the first line print the number of faces m. 
+Then in the next m lines print the description of the faces: the number of points of the face (= 3) 
+and the numbers of the points in the original set. Points are numbered in the same order in which they are given in the input file. 
+The points within the face must be sorted in counterclockwise order with respect to the outside normal to the face.
+The first point is the point with the minimum number. The order of faces is lexicographical.
+
+Example
+
+Input              Output
+1                  4
+4                  3 0 1 3
+0 0 0              3 0 2 1
+1 0 0              3 0 3 2
+0 1 0              3 1 2 3
+0 0 1
+----------------------------------------------------------------------------------------------------------------------------------------
+
+#include <iostream>
+#include <vector>
+#include <list>
+#include <algorithm>
+#include <unordered_map>
+
+// vectors are included in the Point structure, since they have the same functions and fields
+
+struct Point
+{
+    double x;
+    double y;
+    double z;
+
+    Point(double parameter1, double parameter2, double parameter3) : x(parameter1), y(parameter2), z(parameter3)
+    {
+    }
+
+    Point() : Point(0, 0, 0)    // declaring constructor
+    {
+
+    }
+
+    Point operator + (const Point & point2)
+    {
+        return {x + point2.x, y + point2.y, z + point2.z};
+    }
+
+    Point operator - (const Point & point2)
+    {
+        return {x - point2.x, y - point2.y, z - point2.z};
+    }
+
+    Point operator * (const double number)
+    {
+        return {x * number, y * number, z * number};
+    }
+
+};
+
+
+class Face                                                  
+{
+public:
+    std::vector <size_t> points;
+
+    Face(size_t parameter1, size_t parameter2, size_t parameter3)
+    {
+        points.resize(3);
+        points[0] = parameter1;
+        points[1] = parameter2;
+        points[2] = parameter3;
+    }
+
+    Face() : Face(0, 0, 0)    // declaring constructor
+    {
+
+    }
+
+    bool operator <(const Face &another_face)
+    {
+        return points < another_face.points;
+    }
+
+};
+
+Point vector_product(Point vector1, Point vector2)          // vector product, as a result we get a vector
+{
+    Point result;
+    result.x = vector1.y * vector2.z - vector1.z * vector2.y;
+    result.y = -1 * (vector1.x * vector2.z - vector1.z * vector2.x);
+    result.z = vector1.x * vector2.y - vector1.y * vector2.x;
+    return result;
+}
+
+double scalar_product(Point vector1, Point vector2)         // scalar product, as a result we will return double
+{
+    return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
+}
+
+class convex3D
+{
+public:
+    convex3D(std::vector<Point> &storage) : points(storage)
+    {
+        initialization();
+        for (current_point = 4; current_point < points.size(); ++current_point)
+        {
+            AddPoint();
+        }
+        faces.sort();
+    }
+
+    void Print() {
+        std::cout << faces.size() << std::endl;
+        for(auto iter = faces.begin(); iter != faces.end(); ++iter)
+        {
+            std::cout << 3 << " " << iter->points[0] << " " << iter->points[1] << " " << iter->points[2] << std::endl;
+        }
+    }
+private:
+    Point inner;            
+    size_t current_point;   // index of current points
+    std::list <Face> faces;
+    std::vector<Point> &points;
+
+    void initialization()
+    {
+        inner = points[0] + points[1] + points[2] + points[3];
+        inner = inner * 0.25;           // a point that will definitely be inside
+        faces.emplace_back(0, 1, 2);
+        faces.emplace_back(1, 2, 3);
+        faces.emplace_back(2, 3, 0);
+        faces.emplace_back(3, 0, 1);
+        for(auto &face : faces)
+        {
+            face_sorting(face);
+        }
+    }
+
+    Point find_outward_normal(const Face current_face)
+    {
+        Point vector1 = points[current_face.points[1]] - points[current_face.points[0]];
+        Point vector2 = points[current_face.points[2]] - points[current_face.points[0]];
+        Point simple_normal, inner_vector;
+        simple_normal = vector_product(vector1, vector2);
+        inner_vector = inner - points[current_face.points[0]];  // a vector that exactly goes inside the tetrahedron
+        if (scalar_product(inner_vector, simple_normal) < 0) //if the scalar product is less than zero, then this is the external vector
+        {
+            return simple_normal;
+        }
+        else
+        {
+            return simple_normal * (-1.0);
+        }
+    }
+
+    bool visible_face(const Face current_face) // check whether the face is visible or not from current_point
+    {
+        Point external_vector, outward_normal; // external vector and external normal
+        external_vector = points[current_point] - points[current_face.points[0]];
+        outward_normal = find_outward_normal(current_face);
+        return scalar_product(external_vector, outward_normal) > 0;  // if the scalar product is greater than zero, then the point is in the upper half-plane
+    }
+
+    void face_sorting(Face &current_face)
+    {
+        std::sort(current_face.points.begin(), current_face.points.end());
+        Point vector1 = points[current_face.points[1]] - points[current_face.points[0]];
+        Point vector2 = points[current_face.points[2]] - points[current_face.points[0]];
+        Point basic_normal = vector_product(vector1, vector2);
+        Point inner_vector = inner - points[current_face.points[0]]; // vector from point with index 0 to internal
+        if (scalar_product(basic_normal, inner_vector) > 0)   // so how do we sort counterclockwise vector
+        {
+            std::swap(current_face.points[1], current_face.points[2]);
+        }
+    }
+
+    size_t hash(size_t index1, size_t index2)       // Hash two indexes uniquely.
+    {
+        if (index1 < index2)
+        {
+            std::swap(index1, index2);
+        }
+        return 10000 * index1 + index2;     // since the number of points is less than 10,000
+    }
+
+    void AddPoint()
+    {
+        std::unordered_map <size_t, bool> edges;
+        for (auto iter = faces.begin(); iter != faces.end(); ++iter)
+        {
+            if (visible_face(*iter))
+            {
+                if (edges.find(hash(iter->points[0], iter->points[1])) != edges.end())
+                {
+                    edges.erase(edges.find(hash(iter->points[0], iter->points[1])));
+                }
+                else
+                {
+                    edges[hash(iter->points[0], iter->points[1])] = true;
+                }
+                if (edges.find(hash(iter->points[1], iter->points[2])) != edges.end() )
+                {
+                    edges.erase(edges.find(hash(iter->points[1], iter->points[2])));
+                }
+                else
+                {
+                    edges[hash(iter->points[1], iter->points[2])] = true;
+                }
+                if (edges.find(hash(iter->points[2], iter->points[0])) != edges.end())
+                {
+                    edges.erase(edges.find(hash(iter->points[2], iter->points[0])));
+                }
+                else
+                {
+                    edges[hash(iter->points[2], iter->points[0])] = true;
+                }
+                iter = faces.erase(iter);
+                --iter;
+            }
+        }
+        for (auto &iter : edges)
+        {
+            //std::cout << iter.first << std::endl;
+            Face new_face(iter.first / 10000, iter.first % 10000, current_point);
+            face_sorting(new_face);
+            faces.emplace_back(new_face);
+        }
+    }
+};
+
+
+int main()
+{
+    int test_numbers, point_numbers;
+
+    std::cin >> test_numbers;
+    for (int i = 0; i < test_numbers; ++i)
+    {
+        std::cin >> point_numbers;
+        std::vector<Point> points(point_numbers);
+        for(int i = 0; i < point_numbers; ++i)
+        {
+            double x;
+            double y;
+            double z;
+            std::cin >> x >> y >> z;
+            points[i] = Point(x, y, z);
+        }
+        convex3D answer_giver(points);
+        answer_giver.Print();
+    }
+}
