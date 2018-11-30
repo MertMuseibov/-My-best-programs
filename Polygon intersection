@@ -1,0 +1,192 @@
+-------------------------------------------------------------------------------------------------------------------------------------
+                                                 Polygon intersection
+Given two convex polygons on the plane. In the first n points, in the second m. Determine if they intersect in O (n + m). 
+
+Input format
+The first line contains the number n of points of the first polygon.
+Then there are n lines with the coordinates of the points of the first polygon clockwise (coordinates are real numbers, double). 
+The second rectangle is set similarly. n, m ≤ 80000.
+
+Output format
+YES / NO.
+
+Example
+
+Input              Output
+5                  YES
+0 0
+0 1
+1 2
+2 1
+1 0
+3
+3 0
+2 0
+1 1
+--------------------------------------------------------------------------------------------------------------------------------------
+
+#include <iostream>
+#include <cmath>
+
+
+const int max_numbers_points = 80001;
+const double epsilon = 1e-8;
+
+
+struct point
+{
+    double x;
+    double y;
+
+};
+
+void input(point *first_polygon, point *second_polygon, int &first_pn, int &second_pn)
+{
+    std::cin >> first_pn;
+    for (int first_index = 0; first_index < first_pn; ++first_index)
+        std::cin >> first_polygon[first_index].x >> first_polygon[first_index].y;
+    std::cin >> second_pn;
+    for (int second_index = 0; second_index < second_pn; ++second_index)
+    {
+        std::cin >> second_polygon[second_index].x >> second_polygon[second_index].y;
+        second_polygon[second_index].x *= (-1);
+        second_polygon[second_index].y *= (-1);
+    }
+}
+
+void find_absolute_min(const point *first_polygon, const point *second_polygon, const int first_pn, const int second_pn,
+                       point &absolute_first_min, point &absolute_second_min, int &absolute_first_index,
+                       int &absolute_second_index)
+{
+    for (int i = 0; i < first_pn; ++i)
+    {
+        if (first_polygon[i].x < absolute_first_min.x)
+        {
+            absolute_first_min.x = first_polygon[i].x;
+            absolute_first_min.y = first_polygon[i].y;
+            absolute_first_index = i;
+        }
+    }
+
+    for (int i = 0; i < second_pn; ++i)
+    {
+        if (second_polygon[i].x < absolute_second_min.x)
+        {
+            absolute_second_min.x = second_polygon[i].x;
+            absolute_second_min.y = second_polygon[i].y;
+            absolute_second_index = i;
+        }
+    }
+}
+
+void add(const point first, const point second, point *Mink_sum, int &Mink_index)
+{
+    Mink_sum[Mink_index].x = Mink_sum[Mink_index - 1].x + (second.x - first.x);
+    Mink_sum[Mink_index].y = Mink_sum[Mink_index - 1].y + (second.y - first.y);
+    ++Mink_index;
+}
+
+double vector_product(const point vector1, const point vector2)
+{
+    return vector1.x * vector2.y - vector2.x * vector1.y;
+}
+
+void Minkow_sum_build(point *Mink_sum, int &Mink_index, const point *first_polygon, const point *second_polygon,
+                      const int first_pn, const int second_pn, int &first_pointer, int &second_pointer)
+{
+
+    int first_count, second_count;
+    first_count = 0;
+    second_count = 0;
+
+    point vector1, vector2;
+    while (first_count < first_pn && second_count < second_pn)
+    {
+        vector1.x = first_polygon[(first_pointer + 1) % first_pn].x - first_polygon[first_pointer % first_pn].x;
+        vector1.y = first_polygon[(first_pointer + 1) % first_pn].y - first_polygon[first_pointer % first_pn].y;
+        vector2.x = second_polygon[(second_pointer + 1) % second_pn].x - second_polygon[second_pointer % second_pn].x;
+        vector2.y = second_polygon[(second_pointer + 1) % second_pn].y - second_polygon[second_pointer % second_pn].y;
+        if (vector_product(vector1, vector2) > 0)
+        {
+            add(second_polygon[second_pointer % second_pn], second_polygon[(second_pointer + 1) % second_pn], &Mink_sum[0], Mink_index);
+            ++second_pointer;
+            ++second_count;
+        }
+        else
+        {
+            add(first_polygon[first_pointer % first_pn], first_polygon[(first_pointer + 1) % first_pn], &Mink_sum[0], Mink_index);
+            ++first_pointer;
+            ++first_count;
+        }
+    }
+
+    // we throw, if there are vectors left that haven't thrown
+    for (int i = second_count; i < second_pn; i++)
+    {
+        add(second_polygon[second_pointer % second_pn], second_polygon[(second_pointer + 1) % second_pn],
+            &Mink_sum[0], Mink_index);
+        ++second_pointer;
+        ++second_count;
+    }
+
+    for (int i = first_count; i < first_pn; i++)
+    {
+        add(first_polygon[first_pointer % first_pn], first_polygon[(first_pointer + 1) % first_pn],
+            &Mink_sum[0], Mink_index);
+        ++first_pointer;
+        ++first_count;
+    }
+
+}
+
+void check(const point *Mink_sum, const int Mink_index)
+{
+    int numbers = 0;
+    point vector1, vector2;
+    for(int i = 0; i < Mink_index; ++i)
+    {
+        vector1.x = Mink_sum[i + 1].x - Mink_sum[i].x;
+        vector1.y = Mink_sum[i + 1].y - Mink_sum[i].y;
+        vector2.x = 0 - Mink_sum[i + 1].x;
+        vector2.y = 0 - Mink_sum[i + 1].y;
+        if (vector_product(vector1, vector2) <= 0)  // checking that a point is inside or on the polygon itself
+            ++numbers;
+    }
+    if (numbers == Mink_index)
+        std::cout << "YES";
+    else
+        std::cout << "NO";
+}
+
+int main()
+{
+    int first_pn, second_pn;        // first points number, second points number
+
+    point first_polygon[max_numbers_points], second_polygon[max_numbers_points], Mink_sum[2 * max_numbers_points];
+    input(&first_polygon[0], &second_polygon[0], first_pn, second_pn);
+
+    // now we need to find the point with the smallest x coordinate in the first and second polygon
+
+    point absolute_first_min, absolute_second_min;
+    absolute_first_min.x = absolute_first_min.y = 1e9;
+    absolute_second_min.x = absolute_second_min.y = 1e9;
+    int absolute_first_index, absolute_second_index;            // indices of points with the smallest x (hereinafter pointers)
+    find_absolute_min(&first_polygon[0], &second_polygon[0], first_pn, second_pn, absolute_first_min,
+                      absolute_second_min, absolute_first_index, absolute_second_index);
+
+    
+    // close polygons
+    first_polygon[first_pn] = first_polygon[0];
+    second_polygon[second_pn] = second_polygon[0];
+
+    // find the starting point in the amount of Minkowski from which will build
+    int Mink_index = 0;
+    Mink_sum[0].x = absolute_first_min.x + absolute_second_min.x;
+    Mink_sum[0].y = absolute_first_min.y + absolute_second_min.y;
+    ++Mink_index;
+
+    Minkow_sum_build(&Mink_sum[0], Mink_index, first_polygon, second_polygon, first_pn, second_pn,
+                     absolute_first_index, absolute_second_index);
+
+    check(&Mink_sum[0], Mink_index);    // check that the point (0,0) belongs to the resulting polygon
+}
